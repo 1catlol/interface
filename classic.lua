@@ -1599,6 +1599,13 @@ function Library:CreateToggle(section, config)
 		toggleFrame.Size = UDim2.new(0, 233, 0, 23)
 
 		table.insert(toggleData.extras, {type = "colorpicker", frame = extrasFrame, button = cpButton, flag = cpFlag})
+
+		table.insert(lib._syncList, {
+            flag = cpFlag,
+            apply = function(val)
+                tween(cpButton, {BackgroundColor3 = Library.flags[cpFlag]}, TWEEN_INFO_FAST):Play()
+            end,
+        })
 		return toggleData
 	end
 
@@ -1762,6 +1769,14 @@ function Library:CreateToggle(section, config)
 		end)
 
 		toggleFrame.Size = UDim2.new(0, 233, 0, 23)
+
+		table.insert(lib._syncList, {
+            flag = kbFlag,
+            apply = function(val)
+                local displayText = keyDisplayName(Library.flags[kbFlag].key)
+                kbButton.Text = displayText
+            end,
+        })
 		return toggleData
 	end
 
