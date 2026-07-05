@@ -27,7 +27,7 @@ local CustomFont = { } do
 					style = Style,
 					assetId = getcustomasset(FontData.Id)
 				}
-			}f
+			}
 		}
 
 		writefile(`{Name}.font`, HttpService:JSONEncode(fontConfig))
