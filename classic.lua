@@ -230,13 +230,12 @@ function Library.new(title)
 		Parent = topbar,
 	})
 	applyStroke(titleLabel)
-	local titleWidth = titleLabel.TextBounds.X
 
 	local tabFrame = Create("Frame", {
 		BorderSizePixel = 0,
 		BackgroundColor3 = COLOR_WHITE,
-		Size = UDim2.new(1, -(titleWidth + 16), 0, 18),
-		Position = UDim2.new(0, titleWidth + 16, 0, 0),
+		Size = UDim2.new(1, -(titleLabel.TextBounds.X + 20), 0, 18),
+		Position = UDim2.new(0, titleLabel.TextBounds.X + 20, 0, 0),
 		BorderColor3 = COLOR_BLACK,
 		BackgroundTransparency = 1,
 		Parent = topbar,
