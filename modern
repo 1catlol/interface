@@ -300,6 +300,7 @@ function Library:CreateTab(name)
         button = tabBtn, page = page,
         LeftColumn = {col = leftCol, list = leftList},
         RightColumn = {col = rightCol, list = rightList},
+        _col_left = leftCol, _col_right = rightCol,
         name = name,
     }
     tabBtn.MouseButton1Click:Connect(function() self:_switchTab(tabData) end)
@@ -320,6 +321,8 @@ end
 
 -- ==================== MULTI TAB ====================
 function Library:CreateMultiTab(parent, name)
+    local leftCol = parent._col_left or (parent.LeftColumn and parent.LeftColumn.col)
+    local rightCol = parent._col_right or (parent.RightColumn and parent.RightColumn.col)
     if not parent._multiTabs then
         parent._multiTabs = {}; parent._multiActive = nil
         local bar = create("Frame", {
@@ -328,10 +331,14 @@ function Library:CreateMultiTab(parent, name)
         })
         parent._mtBar = bar
         create("UIListLayout", {FillDirection = Enum.FillDirection.Horizontal, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 3), Parent = bar})
-        parent.LeftColumn.col.Position = UDim2.new(0, 4, 0, 28)
-        parent.LeftColumn.col.Size = UDim2.new(0.5, -4, 1, -32)
-        parent.RightColumn.col.Position = UDim2.new(0.5, 0, 0, 28)
-        parent.RightColumn.col.Size = UDim2.new(0.5, -4, 1, -32)
+        if leftCol then
+            leftCol.Position = UDim2.new(0, 4, 0, 28)
+            leftCol.Size = UDim2.new(0.5, -4, 1, -32)
+        end
+        if rightCol then
+            rightCol.Position = UDim2.new(0.5, 0, 0, 28)
+            rightCol.Size = UDim2.new(0.5, -4, 1, -32)
+        end
     end
 
     local mtBtn = create("TextButton", {
@@ -344,10 +351,11 @@ function Library:CreateMultiTab(parent, name)
     corner(mtBtn, 4)
 
     local mtActive = (#parent._multiTabs == 0)
-    parent.LeftColumn.col.Visible = mtActive
-    parent.RightColumn.col.Visible = mtActive
+    if leftCol then leftCol.Visible = mtActive end
+    if rightCol then rightCol.Visible = mtActive end
 
-    local mtData = {button = mtBtn, name = name, LeftColumn = parent.LeftColumn, RightColumn = parent.RightColumn}
+    local mtData = {button = mtBtn, name = name, LeftColumn = parent.LeftColumn, RightColumn = parent.RightColumn,
+        _col_left = leftCol, _col_right = rightCol}
 
     mtBtn.MouseButton1Click:Connect(function()
         for _, mt in ipairs(parent._multiTabs) do
@@ -355,8 +363,8 @@ function Library:CreateMultiTab(parent, name)
             tween(mt.button, {BackgroundColor3 = active and C.ELEMENT or C.DARK}, TWEEN_FAST):Play()
             tween(mt.button, {TextColor3 = active and C.ACCENT or C.SUBTEXT}, TWEEN_FAST):Play()
         end
-        parent.LeftColumn.col.Visible = true
-        parent.RightColumn.col.Visible = true
+        if leftCol then leftCol.Visible = true end
+        if rightCol then rightCol.Visible = true end
         parent._multiActive = mtData
     end)
 
@@ -368,13 +376,24 @@ end
 -- ==================== SECTION ====================
 function Library:CreateSection(parent, name, side)
     local col
+    if type(parent) == "table" and parent._tab then
+        side = parent._side or side
+        parent = parent._tab
+    end
     if type(parent) == "table" and parent.col then
         col = parent.col
     elseif side == "right" then
-        col = parent.RightColumn and parent.RightColumn.col or parent.col
+        if parent.RightColumn and parent.RightColumn.col then
+            col = parent.RightColumn.col
+        end
+        if not col then col = parent._col_right end
     else
-        col = parent.LeftColumn and parent.LeftColumn.col or parent.col
+        if parent.LeftColumn and parent.LeftColumn.col then
+            col = parent.LeftColumn.col
+        end
+        if not col then col = parent._col_left end
     end
+    if not col then return end
 
     local section = create("Frame", {
         BackgroundColor3 = C.SURFACE, BorderSizePixel = 0,
@@ -411,6 +430,7 @@ end
 
 -- ==================== TOGGLE ====================
 function Library:CreateToggle(section, config)
+    local lib = self
     local name = config.name or "Toggle"; local flag = config.flag or name:lower():gsub("%s+", "_")
     local default = config.default or false; local cb = config.callback or function() end
     Library.flags[flag] = default
@@ -475,15 +495,15 @@ function Library:CreateToggle(section, config)
         })
         corner(cpBtn, 3); stroke(cpBtn, C.BORDER)
         cpBtn.MouseButton1Click:Connect(function()
-            self._cpTarget = cpBtn
-            self._cpCallback = function(c)
+            lib._cpTarget = cpBtn
+            lib._cpCallback = function(c)
                 cpBtn.BackgroundColor3 = c; Library.flags[cpFlag] = c
                 if cfg.callback then cfg.callback(c) end
             end
-            self._cpFlag = cpFlag
+            lib._cpFlag = cpFlag
             local ba = cpBtn.AbsolutePosition
-            self._colorPicker.Position = UDim2.new(0, ba.X - 180, 0, ba.Y - 100)
-            self._colorPicker.Visible = true
+            lib._colorPicker.Position = UDim2.new(0, ba.X - 180, 0, ba.Y - 100)
+            lib._colorPicker.Visible = true
         end)
         table.insert(toggleData.extras, {type = "colorpicker", frame = extrasFrame, button = cpBtn, flag = cpFlag})
         return toggleData
@@ -573,7 +593,7 @@ function Library:CreateToggle(section, config)
         local popup = create("Frame", {
             BackgroundColor3 = C.SURFACE, AutomaticSize = Enum.AutomaticSize.Y,
             Size = UDim2.new(0, 210, 0, 10), BorderSizePixel = 0,
-            Visible = false, ZIndex = 500, Parent = self.screenGui,
+            Visible = false, ZIndex = 500, Parent = lib.screenGui,
         })
         corner(popup, 4); stroke(popup, C.BORDER)
         local popEls = create("Frame", {
@@ -601,12 +621,12 @@ function Library:CreateToggle(section, config)
             frame = popup, inner = popup, elements = popEls, name = "context",
             Close = function() ctxOpen.value = false; popup.Visible = false end,
         }
-        table.insert(self._openContexts, {popup = popup, open = ctxOpen})
+        table.insert(lib._openContexts, {popup = popup, open = ctxOpen})
         toggleData._ctxSection = ctxSection
         return ctxSection
     end
 
-    table.insert(self._syncList, {
+    table.insert(lib._syncList, {
         flag = flag,
         apply = function(val)
             if val == nil then val = Library.flags[flag] end
@@ -924,6 +944,13 @@ function Library:LoadConfig(name)
     writefile(self._configFolder .. "/_last.txt", name); self:RefreshAll(); return true
 end
 
+function Library:LoadLastConfig()
+    local p = self._configFolder .. "/_last.txt"
+    if not isfile(p) then return false end
+    local name = readfile(p)
+    if name and name ~= "" then return self:LoadConfig(name) end
+    return false
+end
 function Library:GetConfigs()
     local c = {}; if not isfolder(self._configFolder) then return c end
     for _, f in ipairs(listfiles(self._configFolder)) do local n = f:match("([^/\\]+)%.json$"); if n then table.insert(c, n) end end; return c
