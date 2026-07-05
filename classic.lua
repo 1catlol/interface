@@ -1804,6 +1804,7 @@ function Library:CreateToggle(section, config)
 		ctxPopup.Parent = lib.screenGui
 		ctxPopup.MouseEnter:Connect(function() lib._popupHovered[ctxPopup] = true end)
 		ctxPopup.MouseLeave:Connect(function() lib._popupHovered[ctxPopup] = false end)
+		Instance.new("UIPadding", ctxPopup).PaddingBottom = UDim.new(0, 5)
 
 		lib._popupHovered[ctxPopup] = false
 
