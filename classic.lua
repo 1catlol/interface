@@ -2160,8 +2160,8 @@ function Library:RefreshAll()
 end
 
 function Library:Notify(text, isWarning)
-	local barColor = typeof(isWarning) == "boolean" and Color3.fromRGB(255, 200, 0) or CLR_ACCENT
-	local duration = typeof(duration) == "number" and duration or 3
+	local barColor = typeof(isWarning) == "boolean" and Color3.fromRGB(255, 200, 0) or COLOR_ACCENT
+	local duration = 3
 
 	local displayText = text or ""
 
