@@ -150,10 +150,13 @@ function Library.new(title)
     local pfAvatar = create("ImageLabel", {
         BackgroundColor3 = C.ELEMENT, Size = UDim2.new(0, 28, 0, 28),
         Position = UDim2.new(0, 8, 0, 10), BorderSizePixel = 0,
-        Image = Players:GetUserThumbnailAsync(Local_Player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150),
+        Image = "",
         Parent = profileArea,
     })
     corner(pfAvatar, 14)
+    pcall(function()
+        pfAvatar.Image = Players:GetUserThumbnailAsync(Local_Player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+    end)
     label(profileArea, Local_Player.DisplayName, 11, C.SUBTEXT, FONT, {
         Position = UDim2.new(0, 42, 0, 12), Size = UDim2.new(1, -44, 0, 14),
         TextTruncate = Enum.TextTruncate.AtEnd,
