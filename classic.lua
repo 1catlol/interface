@@ -27,7 +27,7 @@ local CustomFont = { } do
 					style = Style,
 					assetId = getcustomasset(FontData.Id)
 				}
-			}
+			}f
 		}
 
 		writefile(`{Name}.font`, HttpService:JSONEncode(fontConfig))
@@ -234,8 +234,8 @@ function Library.new(title)
 	local tabFrame = Create("Frame", {
 		BorderSizePixel = 0,
 		BackgroundColor3 = COLOR_WHITE,
-		Size = UDim2.new(1, -(titleLabel.TextBounds.X + 20), 0, 18),
-		Position = UDim2.new(0, titleLabel.TextBounds.X + 20, 0, 0),
+		Size = UDim2.new(1, -(titleLabel.TextBounds.X + 30), 0, 18),
+		Position = UDim2.new(0, titleLabel.TextBounds.X + 30, 0, 0),
 		BorderColor3 = COLOR_BLACK,
 		BackgroundTransparency = 1,
 		Parent = topbar,
