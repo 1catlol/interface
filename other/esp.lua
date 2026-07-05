@@ -1,6 +1,7 @@
 --[[
   esp.juice
 ]]
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
@@ -236,6 +237,16 @@ function Visuals:RegisterBar(cfg)
 	cfg.priority = cfg.priority or 0
 	table.insert(self.Bars[cfg.side], cfg)
 	table.sort(self.Bars[cfg.side], function(a, b) return a.priority < b.priority end)
+
+	for _, array in pairs(player_array:GetArrays()) do
+		if array.Drawings and array.Drawings.bars then
+			local t = (self.layout and self.layout.barThickness) or 2
+			array.Drawings.bars[cfg.side][cfg.id] = {
+				outline = Draw("Line", { Thickness = t + 2, Color = Color3.new(0, 0, 0), Transparency = 1, ZIndex = 2 }),
+				fill = Draw("Line", { Thickness = t, Color = Color3.new(0, 1, 0), Transparency = 1, ZIndex = 3 }),
+			}
+		end
+	end
 end
 
 function Visuals:RegisterText(cfg)
@@ -244,6 +255,64 @@ function Visuals:RegisterText(cfg)
 	cfg.priority = cfg.priority or 0
 	table.insert(self.Texts[cfg.side], cfg)
 	table.sort(self.Texts[cfg.side], function(a, b) return a.priority < b.priority end)
+
+	for _, array in pairs(player_array:GetArrays()) do
+		if array.Drawings and array.Drawings.texts then
+			array.Drawings.texts[cfg.side][cfg.id] = Draw("Text", {
+				Outline = true,
+				Center = cfg.center ~= false,
+				Size = cfg.size or 13,
+				Font = cfg.font or FONT,
+				Color = Color3.new(1, 1, 1),
+				ZIndex = 3,
+				Text = "",
+			})
+		end
+	end
+end
+
+function Visuals:UnregisterBar(id)
+	for side, list in pairs(self.Bars) do
+		for i = #list, 1, -1 do
+			if list[i].id == id then
+				table.remove(list, i)
+			end
+		end
+	end
+	for _, array in pairs(player_array:GetArrays()) do
+		if array.Drawings and array.Drawings.bars then
+			for side, _ in pairs(array.Drawings.bars) do
+				local bar = array.Drawings.bars[side][id]
+				if bar then
+					if bar.outline then bar.outline.Visible = false; bar.outline:Remove() end
+					if bar.fill then bar.fill.Visible = false; bar.fill:Remove() end
+					array.Drawings.bars[side][id] = nil
+				end
+			end
+		end
+	end
+end
+
+function Visuals:UnregisterText(id)
+	for side, list in pairs(self.Texts) do
+		for i = #list, 1, -1 do
+			if list[i].id == id then
+				table.remove(list, i)
+			end
+		end
+	end
+	for _, array in pairs(player_array:GetArrays()) do
+		if array.Drawings and array.Drawings.texts then
+			for side, _ in pairs(array.Drawings.texts) do
+				local t = array.Drawings.texts[side][id]
+				if t then
+					t.Visible = false
+					t:Remove()
+					array.Drawings.texts[side][id] = nil
+				end
+			end
+		end
+	end
 end
 
 function Visuals:GetPingSeconds()
@@ -571,6 +640,28 @@ function Visuals:ClearLayout()
 		self.Bars[side] = {}
 		self.Texts[side] = {}
 	end
+	for _, array in pairs(player_array:GetArrays()) do
+		if array.Drawings then
+			if array.Drawings.bars then
+				for side, _ in pairs(array.Drawings.bars) do
+					for _, bar in pairs(array.Drawings.bars[side]) do
+						if bar.outline then bar.outline.Visible = false; bar.outline:Remove() end
+						if bar.fill then bar.fill.Visible = false; bar.fill:Remove() end
+					end
+				end
+				array.Drawings.bars = { Left = {}, Right = {}, Top = {}, Bottom = {} }
+			end
+			if array.Drawings.texts then
+				for side, _ in pairs(array.Drawings.texts) do
+					for _, t in pairs(array.Drawings.texts[side]) do
+						t.Visible = false
+						t:Remove()
+					end
+				end
+				array.Drawings.texts = { Left = {}, Right = {}, Top = {}, Bottom = {} }
+			end
+		end
+	end
 	self._layoutSetup = false
 end
 
@@ -578,103 +669,6 @@ function Visuals:SetupLayoutDefaults()
 	if self._layoutSetup then return end
 	self._layoutSetup = true
 
-	self:RegisterBar({
-		id = "health",
-		side = "Left",
-		priority = 1,
-		visibleFn = function() return settings.visuals.healthbar end,
-		valueFn = function(_, humanoid)
-			if not humanoid or humanoid.MaxHealth <= 0 then return 0 end
-			return humanoid.Health / humanoid.MaxHealth
-		end,
-		colorFn = function(_, _, _, v)
-			return Color3.new(1 - v, v, 0)
-		end,
-	})
-
-	self:RegisterBar({
-		id = "ammobar",
-		side = "Bottom",
-		priority = -2,
-		visibleFn = function(array)
-			if not array.Character then return false end
-			local weaponname = tostring(array.Character:GetAttribute("EquippedWeapon"))
-			local weapondata = searchWeapon(weaponname)
-			if not weapondata or not array.Character:GetAttribute("AmmoInclip") then return false end
-			return settings.visuals.ammobar
-		end,
-		valueFn = function(array, humanoid)
-			if not array.Character then return 0 end
-			local weaponname = tostring(array.Character:GetAttribute("EquippedWeapon"))
-			local weapondata = searchWeapon(weaponname)
-			if weapondata and array.Character:GetAttribute("AmmoInclip") and array.Character:GetAttribute("AmmoLeft") then
-				local maxammo = weapondata.StoredAmmo.Value ~= 0 and weapondata.StoredAmmo.Value or weapondata.Ammo.Value
-				local ammoinclip = array.Character:GetAttribute("AmmoInclip")
-				local ammoleft = array.Character:GetAttribute("AmmoLeft")
-				return ammoinclip + ammoleft, maxammo
-			end
-			return 100, 100
-		end,
-		colorFn = function(_, _, _, v)
-			return Color3.fromRGB(100, 100, 255)
-		end,
-	})
-
-	self:RegisterBar({
-		id = "charge",
-		side = "Top",
-		priority = -2,
-		visibleFn = function(array)
-			return array.Character:FindFirstChild("IsAPlayer")
-				and array.Character.IsAPlayer.Value == "Doctor"
-				and settings.visuals.charge
-		end,
-		valueFn = function(array, humanoid)
-			if not array.Character:GetAttribute("SuperC") then return 0 end
-			return array.Character:GetAttribute("SuperC"), 100
-		end,
-		colorFn = function(_, _, _, v)
-			return Color3.fromRGB(255, 0, 0)
-		end,
-	})
-
-	self:RegisterText({
-		id = "name",
-		side = "Top",
-		priority = 0,
-		visibleFn = function() return settings.visuals.name end,
-		textFn = function(array)
-			return settings.visuals.UseDisplay and array.Player.DisplayName or array.Player.Name
-		end,
-		colorFn = function(array)
-			if array.Player.Team == My_Player.Team then
-				return Color3.new(0, 1, 0)
-			end
-			return Color3.new(1, 1, 1)
-		end,
-	})
-
-	self:RegisterText({
-		id = "weapon",
-		side = "Bottom",
-		priority = -1,
-		visibleFn = function(array)
-			if not array.Character then return false end
-			local weaponname = tostring(array.Character:GetAttribute("EquippedWeapon"))
-			local weapondata = searchWeapon(weaponname)
-			if not weapondata then return false end
-			return settings.visuals.weapon
-		end,
-		textFn = function(array)
-			local weaponname = tostring(array.Character:GetAttribute("EquippedWeapon"))
-			if array.Character and array.Character:GetAttribute("AmmoInclip") and array.Character:GetAttribute("AmmoLeft") then
-				local ammoinclip = tostring(array.Character:GetAttribute("AmmoInclip"))
-				local ammoleft = tostring(array.Character:GetAttribute("AmmoLeft"))
-				return weaponname .. " " .. ammoinclip .. "/" .. ammoleft
-			end
-			return weaponname or ""
-		end,
-	})
 end
 
 function Visuals:Bind()
@@ -727,4 +721,8 @@ return {
 	Bind = function() return Visuals:Bind() end,
 	Unbind = function() return Visuals:Unbind() end,
 	ClearLayout = function() return Visuals:ClearLayout() end,
+	RegisterBar = function(cfg) return Visuals:RegisterBar(cfg) end,
+	RegisterText = function(cfg) return Visuals:RegisterText(cfg) end,
+	UnregisterBar = function(id) return Visuals:UnregisterBar(id) end,
+	UnregisterText = function(id) return Visuals:UnregisterText(id) end,
 }
