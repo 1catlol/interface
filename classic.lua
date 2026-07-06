@@ -2000,10 +2000,48 @@ function Library:SetVisible(visible)
 		self.main.Visible = true
 		self.main.GroupTransparency = 1
 		tween(self.main, {GroupTransparency = 0}, TWEEN_INFO_BOUNCE):Play()
-		if not self._cursorUnlockConn then
-			self._cursorUnlockConn = Services.Run_Service.RenderStepped:Connect(function()
-				Services.User_Input.MouseBehavior = Enum.MouseBehavior.Default
-				Services.User_Input.MouseIconEnabled = true
+		self._cursorToggled = true
+		if not self._cursorThread then
+			self._cursorThread = task.spawn(function()
+				local State = Services.User_Input.MouseIconEnabled
+				local MouseBehaviorState = Services.User_Input.MouseBehavior
+
+				local Cursor = Drawing.new("Triangle")
+				Cursor.Thickness = 1
+				Cursor.Filled = true
+				Cursor.Visible = true
+
+				local CursorOutline = Drawing.new("Triangle")
+				CursorOutline.Thickness = 1
+				CursorOutline.Filled = false
+				CursorOutline.Color = Color3.new(0, 0, 0)
+				CursorOutline.Visible = true
+
+				while self._cursorToggled and self.screenGui.Parent do
+					Services.User_Input.MouseIconEnabled = false
+					Services.User_Input.MouseBehavior = Enum.MouseBehavior.Default
+
+					local mPos = Services.User_Input:GetMouseLocation()
+
+					Cursor.Color = COLOR_ACCENT
+
+					Cursor.PointA = Vector2.new(mPos.X, mPos.Y)
+					Cursor.PointB = Vector2.new(mPos.X + 16, mPos.Y + 6)
+					Cursor.PointC = Vector2.new(mPos.X + 6, mPos.Y + 16)
+
+					CursorOutline.PointA = Cursor.PointA
+					CursorOutline.PointB = Cursor.PointB
+					CursorOutline.PointC = Cursor.PointC
+
+					Services.Run_Service.RenderStepped:Wait()
+				end
+
+				Services.User_Input.MouseIconEnabled = State
+				Services.User_Input.MouseBehavior = MouseBehaviorState
+
+				Cursor:Remove()
+				CursorOutline:Remove()
+				self._cursorThread = nil
 			end)
 		end
 	else
@@ -2018,12 +2056,7 @@ function Library:SetVisible(visible)
 		self.colorPickerPopup.Visible = false
 		self.keyMenuPopup.Visible = false
 		self.warningFrame.Visible = false
-		-- stop forcing the cursor free and hand control back to the game (re-lock for FPS)
-		if self._cursorUnlockConn then
-			self._cursorUnlockConn:Disconnect()
-			self._cursorUnlockConn = nil
-		end
-		Services.User_Input.MouseBehavior = Enum.MouseBehavior.LockCenter
+		self._cursorToggled = false
 	end
 end
 
@@ -2052,6 +2085,7 @@ function Library:Destroy()
 		self._cursorUnlockConn:Disconnect()
 		self._cursorUnlockConn = nil
 	end
+	self._cursorToggled = false
 	pcall(function()
 		self.screenGui:Destroy()
 	end)
