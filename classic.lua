@@ -2000,6 +2000,12 @@ function Library:SetVisible(visible)
 		self.main.Visible = true
 		self.main.GroupTransparency = 1
 		tween(self.main, {GroupTransparency = 0}, TWEEN_INFO_BOUNCE):Play()
+		if not self._cursorUnlockConn then
+			self._cursorUnlockConn = Services.Run_Service.RenderStepped:Connect(function()
+				Services.User_Input.MouseBehavior = Enum.MouseBehavior.Default
+				Services.User_Input.MouseIconEnabled = true
+			end)
+		end
 	else
 		self._toggleId = (self._toggleId or 0) + 1
 		local captureId = self._toggleId
@@ -2012,6 +2018,12 @@ function Library:SetVisible(visible)
 		self.colorPickerPopup.Visible = false
 		self.keyMenuPopup.Visible = false
 		self.warningFrame.Visible = false
+		-- stop forcing the cursor free and hand control back to the game (re-lock for FPS)
+		if self._cursorUnlockConn then
+			self._cursorUnlockConn:Disconnect()
+			self._cursorUnlockConn = nil
+		end
+		Services.User_Input.MouseBehavior = Enum.MouseBehavior.LockCenter
 	end
 end
 
@@ -2035,6 +2047,10 @@ function Library:Destroy()
 	if self._keybindUpdateConn then
 		self._keybindUpdateConn:Disconnect()
 		self._keybindUpdateConn = nil
+	end
+	if self._cursorUnlockConn then
+		self._cursorUnlockConn:Disconnect()
+		self._cursorUnlockConn = nil
 	end
 	pcall(function()
 		self.screenGui:Destroy()
