@@ -523,7 +523,12 @@ function Library.new(title)
 			end
 		end
 	end)
-	
+
+	-- The menu starts visible by default (main.Visible is true on creation), so the
+	-- cursor loop must be started here at init -- SetVisible(true) only runs on later
+	-- toggles, so without this the custom cursor is missing until the first retoggle.
+	self:_StartCursor()
+
 	return self
 end
 
@@ -1994,56 +1999,59 @@ function Library:CreateWarning(title, text, callback)
 	tween(self.warningBox, {Position = boxStartPos}, TWEEN_INFO_BOUNCE):Play()
 end
 
+function Library:_StartCursor()
+	self._cursorToggled = true
+	if self._cursorThread then return end
+	self._cursorThread = task.spawn(function()
+		local State = Services.User_Input.MouseIconEnabled
+		local MouseBehaviorState = Services.User_Input.MouseBehavior
+
+		local Cursor = Drawing.new("Triangle")
+		Cursor.Thickness = 1
+		Cursor.Filled = true
+		Cursor.Visible = true
+
+		local CursorOutline = Drawing.new("Triangle")
+		CursorOutline.Thickness = 1
+		CursorOutline.Filled = false
+		CursorOutline.Color = Color3.new(0, 0, 0)
+		CursorOutline.Visible = true
+
+		while self._cursorToggled and self.screenGui.Parent do
+			Services.User_Input.MouseIconEnabled = false
+			Services.User_Input.MouseBehavior = Enum.MouseBehavior.Default
+
+			local mPos = Services.User_Input:GetMouseLocation()
+
+			Cursor.Color = COLOR_ACCENT
+
+			Cursor.PointA = Vector2.new(mPos.X, mPos.Y)
+			Cursor.PointB = Vector2.new(mPos.X + 16, mPos.Y + 6)
+			Cursor.PointC = Vector2.new(mPos.X + 6, mPos.Y + 16)
+
+			CursorOutline.PointA = Cursor.PointA
+			CursorOutline.PointB = Cursor.PointB
+			CursorOutline.PointC = Cursor.PointC
+
+			Services.Run_Service.RenderStepped:Wait()
+		end
+
+		Services.User_Input.MouseIconEnabled = State
+		Services.User_Input.MouseBehavior = MouseBehaviorState
+
+		Cursor:Remove()
+		CursorOutline:Remove()
+		self._cursorThread = nil
+	end)
+end
+
 function Library:SetVisible(visible)
 	if visible then
 		self._toggleId = (self._toggleId or 0) + 1
 		self.main.Visible = true
 		self.main.GroupTransparency = 1
 		tween(self.main, {GroupTransparency = 0}, TWEEN_INFO_BOUNCE):Play()
-		self._cursorToggled = true
-		if not self._cursorThread then
-			self._cursorThread = task.spawn(function()
-				local State = Services.User_Input.MouseIconEnabled
-				local MouseBehaviorState = Services.User_Input.MouseBehavior
-
-				local Cursor = Drawing.new("Triangle")
-				Cursor.Thickness = 1
-				Cursor.Filled = true
-				Cursor.Visible = true
-
-				local CursorOutline = Drawing.new("Triangle")
-				CursorOutline.Thickness = 1
-				CursorOutline.Filled = false
-				CursorOutline.Color = Color3.new(0, 0, 0)
-				CursorOutline.Visible = true
-
-				while self._cursorToggled and self.screenGui.Parent do
-					Services.User_Input.MouseIconEnabled = false
-					Services.User_Input.MouseBehavior = Enum.MouseBehavior.Default
-
-					local mPos = Services.User_Input:GetMouseLocation()
-
-					Cursor.Color = COLOR_ACCENT
-
-					Cursor.PointA = Vector2.new(mPos.X, mPos.Y)
-					Cursor.PointB = Vector2.new(mPos.X + 16, mPos.Y + 6)
-					Cursor.PointC = Vector2.new(mPos.X + 6, mPos.Y + 16)
-
-					CursorOutline.PointA = Cursor.PointA
-					CursorOutline.PointB = Cursor.PointB
-					CursorOutline.PointC = Cursor.PointC
-
-					Services.Run_Service.RenderStepped:Wait()
-				end
-
-				Services.User_Input.MouseIconEnabled = State
-				Services.User_Input.MouseBehavior = MouseBehaviorState
-
-				Cursor:Remove()
-				CursorOutline:Remove()
-				self._cursorThread = nil
-			end)
-		end
+		self:_StartCursor()
 	else
 		self._toggleId = (self._toggleId or 0) + 1
 		local captureId = self._toggleId
