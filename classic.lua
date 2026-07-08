@@ -1988,6 +1988,60 @@ function Library:CreateLabel(section, text)
 	return {frame = labelFrame, label = lbl}
 end
 
+function Library:CreateImageLabel(section, config)
+	local name = config.name or ""
+	local width = config.width or 200
+	local height = config.height or 200
+
+	local imageFrame = Instance.new("Frame")
+	imageFrame.BorderSizePixel = 0
+	imageFrame.BackgroundColor3 = COLOR_INNER
+	imageFrame.Size = UDim2.new(0, width, 0, height)
+	imageFrame.BorderColor3 = COLOR_BLACK
+	imageFrame.Name = "ImageLabel"
+	imageFrame.Parent = section.elements
+
+	local img = Instance.new("ImageLabel")
+	img.BackgroundColor3 = COLOR_INNER
+	img.BackgroundTransparency = 1
+	img.Size = UDim2.new(1, -8, 1, -8)
+	img.Position = UDim2.new(0, 4, 0, 4)
+	img.ScaleType = Enum.ScaleType.Fit
+	img.BorderColor3 = COLOR_BLACK
+	img.Name = "Image"
+	img.Parent = imageFrame
+
+	local lbl = Instance.new("TextLabel")
+	lbl.TextStrokeTransparency = 0
+	lbl.BorderSizePixel = 0
+	lbl.TextSize = 11
+	lbl.TextXAlignment = Enum.TextXAlignment.Center
+	lbl.BackgroundColor3 = COLOR_WHITE
+	lbl.FontFace = FONT
+	lbl.TextColor3 = COLOR_TEXT
+	lbl.BackgroundTransparency = 1
+	lbl.Size = UDim2.new(1, 0, 0, 16)
+	lbl.Position = UDim2.new(0, 0, 1, -12)
+	lbl.BorderColor3 = COLOR_BLACK
+	lbl.Text = name
+	lbl.Parent = imageFrame
+	applyStroke(lbl)
+
+	imageFrame.img = img
+	imageFrame.label = lbl
+
+	imageFrame.SetImage = function(self, assetId, displayName)
+		pcall(function()
+			img.Image = assetId or ""
+		end)
+		lbl.Text = displayName or name
+	end
+
+	imageFrame.image = img
+
+	return imageFrame
+end
+
 function Library:CreateWarning(title, text, callback)
 	self.warningText.Text = text or ""
 	self.warningCallback = callback
