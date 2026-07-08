@@ -170,7 +170,7 @@ function Library.new(title)
 	self._onUnloadCallback = nil
 	self._openContextPopups = {}
 	self._syncList = {}
-	self._configFolder = "retake_config"
+	self._configFolder = "Retake.win/config"
 
 	local screenGui = Create("ScreenGui", {
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
@@ -179,7 +179,7 @@ function Library.new(title)
 	self.screenGui = screenGui
 
 	local main = Create("CanvasGroup", {
-		BackgroundColor3 = COLOR_WHITE,
+		BackgroundColor3 = COLOR_BG,
 		Size = UDim2.new(0, 498, 0, 418),
 		Position = UDim2.new(0.5, -249, 0.4, -209),
 		BorderColor3 = COLOR_BLACK,
