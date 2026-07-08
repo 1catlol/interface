@@ -1532,6 +1532,14 @@ function Library:CreateToggle(section, config)
 		setToggle(not toggled)
 	end)
 
+	table.insert(self._syncList, {
+		flag = flag,
+		apply = function(val)
+			if val == nil then val = Library.flags[flag] end
+			setToggle(val or default)
+		end,
+	})
+
 	local function getOrCreateExtrasFrame()
 		for _, child in ipairs(toggleFrame:GetChildren()) do
 			if child:IsA("Frame") and child.BackgroundTransparency == 1 and child:FindFirstChildOfClass("TextButton") then
