@@ -2027,19 +2027,19 @@ function Library:CreateImageLabel(section, config)
 	lbl.Parent = imageFrame
 	applyStroke(lbl)
 
-	imageFrame.img = img
-	imageFrame.label = lbl
+	local widget = {
+		frame = imageFrame,
+		image = img,
+		label = lbl,
+		SetImage = function(self, assetId, displayName)
+			pcall(function()
+				img.Image = assetId or ""
+			end)
+			lbl.Text = displayName or name
+		end,
+	}
 
-	imageFrame.SetImage = function(self, assetId, displayName)
-		pcall(function()
-			img.Image = assetId or ""
-		end)
-		lbl.Text = displayName or name
-	end
-
-	imageFrame.image = img
-
-	return imageFrame
+	return widget
 end
 
 function Library:CreateWarning(title, text, callback)
