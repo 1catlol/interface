@@ -1963,6 +1963,85 @@ function Library:CreateButton(section, config)
 	return {frame = buttonFrame, button = btn}
 end
 
+function Library:CreateImageButton(section, config)
+	local name = config.name or "Button"
+	local callback = config.callback or function() end
+	local image = config.image or ""
+	local imageW = config.width or 100
+
+	local pad = 4
+	local textH = 14
+	local imgW = imageW - pad * 2
+
+	local buttonFrame = Instance.new("Frame")
+	buttonFrame.BorderSizePixel = 0
+	buttonFrame.BackgroundColor3 = COLOR_ELEMENT
+	buttonFrame.Size = UDim2.new(0, imageW, 0, imgW + pad * 2 + textH)
+	buttonFrame.BorderColor3 = COLOR_BLACK
+	buttonFrame.Name = "ImageButton"
+	buttonFrame.Parent = section.elements
+	applyStroke(buttonFrame)
+
+	local img = Instance.new("ImageLabel")
+	img.BackgroundColor3 = COLOR_INNER
+	img.BackgroundTransparency = 1
+	img.Size = UDim2.new(0, imgW, 0, imgW)
+	img.Position = UDim2.new(0, pad, 0, pad)
+	img.ScaleType = Enum.ScaleType.Fit
+	img.BorderColor3 = COLOR_BLACK
+	img.Image = image
+	img.Name = "Image"
+	img.Parent = buttonFrame
+
+	local function fitBox()
+		local cs = img.ContentImageSize
+		if cs and cs.X > 0 and cs.Y > 0 then
+			local aspect = cs.X / cs.Y
+			local newH = math.floor(imgW / aspect + 0.5)
+			img.Size = UDim2.new(0, imgW, 0, newH)
+			buttonFrame.Size = UDim2.new(0, imageW, 0, newH + pad * 2 + textH)
+		end
+	end
+	img:GetPropertyChangedSignal("ContentImageSize"):Connect(fitBox)
+	task.spawn(fitBox)
+
+	local lbl = Instance.new("TextLabel")
+	lbl.TextStrokeTransparency = 0
+	lbl.BorderSizePixel = 0
+	lbl.TextSize = 10
+	lbl.TextXAlignment = Enum.TextXAlignment.Center
+	lbl.BackgroundColor3 = COLOR_WHITE
+	lbl.FontFace = FONT
+	lbl.TextColor3 = COLOR_TEXT
+	lbl.BackgroundTransparency = 1
+	lbl.Size = UDim2.new(1, 0, 0, textH)
+	lbl.Position = UDim2.new(0, 0, 1, -textH)
+	lbl.BorderColor3 = COLOR_BLACK
+	lbl.Text = name
+	lbl.Parent = buttonFrame
+	applyStroke(lbl)
+
+	local btn = Instance.new("TextButton")
+	btn.Text = ""
+	btn.BackgroundTransparency = 1
+	btn.BackgroundColor3 = COLOR_WHITE
+	btn.Size = UDim2.new(1, 0, 1, 0)
+	btn.BorderColor3 = COLOR_BLACK
+	btn.Name = "ClickOverlay"
+	btn.Parent = buttonFrame
+
+	btn.MouseButton1Click:Connect(function()
+		tween(buttonFrame, {BackgroundColor3 = COLOR_ACCENT}, TWEEN_INFO_FAST):Play()
+		task.delay(0.15, function()
+			tween(buttonFrame, {BackgroundColor3 = COLOR_ELEMENT}, TWEEN_INFO_FAST):Play()
+		end)
+		callback()
+	end)
+	btn.AutoButtonColor = false
+
+	return {frame = buttonFrame, button = btn, image = img, label = lbl}
+end
+
 function Library:CreateLabel(section, text)
 	local labelFrame = Instance.new("Frame")
 	labelFrame.BorderSizePixel = 0
