@@ -1969,7 +1969,7 @@ function Library:CreateImageButton(section, config)
 	local image = config.image or ""
 	local imageW = config.width or 50
 
-	local pad = 4
+	local pad = 1
 	local textH = 14
 	local imgW = imageW - pad * 2
 
