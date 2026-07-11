@@ -1967,7 +1967,7 @@ function Library:CreateImageButton(section, config)
 	local name = config.name or "Button"
 	local callback = config.callback or function() end
 	local image = config.image or ""
-	local imageW = config.width or 100
+	local imageW = config.width or 50
 
 	local pad = 4
 	local textH = 14
