@@ -1116,6 +1116,8 @@ function Library:CreateSlider(section, config)
 	local default = config.default or 50
 	local minVal = config.min or 0
 	local maxVal = config.max or 100
+	local specialMin = config.specialMin or minVal
+	local specialMax = config.specialMax or maxVal
 	local step = config.step or 1
 	local flag = config.flag or name:lower():gsub("%s+", "_")
 	local callback = config.callback or function() end
@@ -1160,7 +1162,7 @@ function Library:CreateSlider(section, config)
 		BackgroundColor3 = COLOR_WHITE, FontFace = FONT,
 		TextColor3 = COLOR_TEXT, BackgroundTransparency = 1,
 		Size = UDim2.new(0, 60, 0, 13), BorderColor3 = COLOR_BLACK,
-		Text = tostring(default) .. " / " .. tostring(maxVal), Name = "value",
+		Text = (tostring(default) == minVal and specialMin or tostring(default) == maxVal and specialMax or tostring(default)) .. " / " .. tostring(maxVal), Name = "value",
 		Position = UDim2.new(0.36922, 0, 0.5, 0), Parent = sliderFrame,
 	})
 	applyStroke(valueLabel)
@@ -1968,15 +1970,17 @@ function Library:CreateImageButton(section, config)
 	local callback = config.callback or function() end
 	local image = config.image or ""
 	local imageW = config.width or 50
+	local fixedH = config.height
 
 	local pad = 1
 	local textH = 14
 	local imgW = imageW - pad * 2
+	local imgH = fixedH and (fixedH - pad * 2 - textH) or imgW
 
 	local buttonFrame = Instance.new("Frame")
 	buttonFrame.BorderSizePixel = 0
 	buttonFrame.BackgroundColor3 = COLOR_ELEMENT
-	buttonFrame.Size = UDim2.new(0, imageW, 0, imgW + pad * 2 + textH)
+	buttonFrame.Size = UDim2.new(0, imageW, 0, fixedH or (imgW + pad * 2 + textH))
 	buttonFrame.BorderColor3 = COLOR_BLACK
 	buttonFrame.Name = "ImageButton"
 	buttonFrame.Parent = section.elements
@@ -1985,25 +1989,27 @@ function Library:CreateImageButton(section, config)
 	local img = Instance.new("ImageLabel")
 	img.BackgroundColor3 = COLOR_INNER
 	img.BackgroundTransparency = 1
-	img.Size = UDim2.new(0, imgW, 0, imgW)
+	img.Size = UDim2.new(0, imgW, 0, fixedH and imgH or imgW)
 	img.Position = UDim2.new(0, pad, 0, pad)
-	img.ScaleType = Enum.ScaleType.Fit
+	img.ScaleType = fixedH and Enum.ScaleType.Stretch or Enum.ScaleType.Fit
 	img.BorderColor3 = COLOR_BLACK
 	img.Image = image
 	img.Name = "Image"
 	img.Parent = buttonFrame
 
-	local function fitBox()
-		local cs = img.ContentImageSize
-		if cs and cs.X > 0 and cs.Y > 0 then
-			local aspect = cs.X / cs.Y
-			local newH = math.floor(imgW / aspect + 0.5)
-			img.Size = UDim2.new(0, imgW, 0, newH)
-			buttonFrame.Size = UDim2.new(0, imageW, 0, newH + pad * 2 + textH)
+	if not fixedH then
+		local function fitBox()
+			local cs = img.ContentImageSize
+			if cs and cs.X > 0 and cs.Y > 0 then
+				local aspect = cs.X / cs.Y
+				local newH = math.floor(imgW / aspect + 0.5)
+				img.Size = UDim2.new(0, imgW, 0, newH)
+				buttonFrame.Size = UDim2.new(0, imageW, 0, newH + pad * 2 + textH)
+			end
 		end
+		img:GetPropertyChangedSignal("ContentImageSize"):Connect(fitBox)
+		task.spawn(fitBox)
 	end
-	img:GetPropertyChangedSignal("ContentImageSize"):Connect(fitBox)
-	task.spawn(fitBox)
 
 	local lbl = Instance.new("TextLabel")
 	lbl.TextStrokeTransparency = 0
