@@ -1162,7 +1162,7 @@ function Library:CreateSlider(section, config)
 		BackgroundColor3 = COLOR_WHITE, FontFace = FONT,
 		TextColor3 = COLOR_TEXT, BackgroundTransparency = 1,
 		Size = UDim2.new(0, 60, 0, 13), BorderColor3 = COLOR_BLACK,
-		Text = (tostring(default) == minVal and specialMin or tostring(default) == maxVal and specialMax or tostring(default)) .. " / " .. tostring(maxVal),
+		Text = (default == minVal and specialMin or default == maxVal and specialMax or tostring(default)) .. " / " .. (specialMax ~= maxVal and specialMax or tostring(maxVal)),
 		Name = "value",
 		Position = UDim2.new(0.36922, 0, 0.5, 0), Parent = sliderFrame,
 	})
@@ -1178,7 +1178,7 @@ function Library:CreateSlider(section, config)
 		local displayVal = step == 1 and math.floor(val) or val
 		local tingting = displayVal == minVal and specialMin or displayVal == maxVal and specialMax
 		displayVal = string.format("%." .. (step < 1 and 2 or 0) .. "f", displayVal)
-		valueLabel.Text = tingting or displayVal .. " / " .. tostring(maxVal)
+		valueLabel.Text = (tingting or displayVal) .. " / " .. (specialMax ~= maxVal and specialMax or tostring(maxVal))
 		Library.flags[flag] = val
 		callback(val)
 	end
