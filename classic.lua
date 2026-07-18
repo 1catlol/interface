@@ -171,6 +171,7 @@ function Library.new(title)
 	self._openContextPopups = {}
 	self._syncList = {}
 	self._configFolder = "Retake.win/config"
+	self._notifyQueue = {}
 
 	local screenGui = Create("ScreenGui", {
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
@@ -530,6 +531,108 @@ function Library.new(title)
 	self:_StartCursor()
 
 	return self
+end
+
+function Library:FlushNotifications()
+	local nq = self._notifyQueue
+	if not nq then return end
+	while #nq > 0 do
+		local n = table.remove(nq, 1)
+		self:_showNotification(n.text, n.warn)
+	end
+end
+
+-- internal: actually render a notification
+function Library:_showNotification(text, isWarning)
+	local barColor = typeof(isWarning) == "boolean" and Color3.fromRGB(255, 200, 0) or COLOR_ACCENT
+	local duration = 3
+
+	local displayText = text or ""
+
+	local notifyFrame = Create("CanvasGroup", {
+		BackgroundColor3 = COLOR_BG,
+		Size = UDim2.new(0, 0, 0, 22),
+		BorderColor3 = COLOR_BLACK,
+		Name = "Notification",
+		GroupTransparency = 1,
+		ZIndex = 999,
+		Parent = self.notifyHolder,
+	})
+
+	local notifyText = Create("TextLabel", {
+		TextStrokeTransparency = 0, BorderSizePixel = 0, TextSize = 12,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		BackgroundColor3 = COLOR_WHITE, FontFace = FONT,
+		TextColor3 = isWarning and barColor or COLOR_TEXT,
+		BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.X,
+		BorderColor3 = COLOR_BLACK,
+		Text = displayText,
+		Position = UDim2.new(0, 6, 0, 0),
+		Parent = notifyFrame,
+	})
+	applyStroke(notifyText)
+	local textWidth = notifyText.TextBounds.X
+	notifyText.AutomaticSize = Enum.AutomaticSize.None
+
+	local frameWidth = math.clamp(math.ceil(textWidth) + 52, 120, 400)
+	notifyFrame.Size = UDim2.new(0, frameWidth, 0, 22)
+	notifyText.Size = UDim2.new(0, frameWidth - 36, 1, 0)
+
+	local timerLabel = Create("TextLabel", {
+		TextStrokeTransparency = 0, BorderSizePixel = 0, TextSize = 12,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		BackgroundColor3 = COLOR_WHITE, FontFace = FONT,
+		TextColor3 = barColor, BackgroundTransparency = 1,
+		Size = UDim2.new(0, 28, 1, 0), BorderColor3 = COLOR_BLACK,
+		Text = duration .. "s",
+		Position = UDim2.new(1, -32, 0, 0), Parent = notifyFrame,
+	})
+
+	local timerBar = Create("Frame", {
+		BorderSizePixel = 0, BackgroundColor3 = barColor,
+		Size = UDim2.new(1, 0, 0, 2),
+		Position = UDim2.new(0, 0, 1, -2),
+		BorderColor3 = COLOR_BLACK, Parent = notifyFrame,
+	})
+	applyStroke(timerBar)
+
+	notifyFrame.Position = UDim2.new(0, -frameWidth - 20, notifyFrame.Position.Y.Scale, notifyFrame.Position.Y.Offset)
+	tween(notifyFrame, {Position = UDim2.new(0, 4, notifyFrame.Position.Y.Scale, notifyFrame.Position.Y.Offset), GroupTransparency = 0}, TWEEN_INFO_SMOOTH):Play()
+	tween(timerBar, {Size = UDim2.new(0, 0, 0, 2)}, TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)):Play()
+
+	if isWarning then
+		local flashTween = TweenInfo.new(0.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+		for i = 1, 6 do
+			task.delay((i - 1) * 0.5, function()
+				local target = i % 2 == 1 and barColor or Color3.fromRGB(80, 60, 0)
+				tween(timerBar, {BackgroundColor3 = target}, flashTween):Play()
+			end)
+		end
+	else
+		local flashTween = TweenInfo.new(0.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+		for i = 1, 6 do
+			task.delay((i - 1) * 0.5, function()
+				local target = i % 2 == 1 and barColor or Color3.fromRGB(2, 60, 110)
+				tween(timerBar, {BackgroundColor3 = target}, flashTween):Play()
+			end)
+		end
+	end
+
+	for i = duration - 1, 0, -1 do
+		task.delay(duration - i, function()
+			if notifyFrame and notifyFrame.Parent then
+				timerLabel.Text = i .. "s"
+			end
+		end)
+	end
+
+	task.delay(duration, function()
+		local outTween = tween(notifyFrame, {Position = UDim2.new(0, -frameWidth - 20, notifyFrame.Position.Y.Scale, notifyFrame.Position.Y.Offset), GroupTransparency = 1}, TWEEN_INFO_SMOOTH)
+		outTween:Play()
+		outTween.Completed:Connect(function()
+			notifyFrame:Destroy()
+		end)
+	end)
 end
 
 function Library:_createColorPickerPopup(parent)
@@ -1003,6 +1106,9 @@ function Library:CreateTab(name)
 		tabIndicator.BackgroundColor3 = COLOR_WHITE
 	end
 
+	tabData.LeftColumn = {_tab = tabData, _side = "left"}
+	tabData.RightColumn = {_tab = tabData, _side = "right"}
+
 	return tabData
 end
 
@@ -1030,7 +1136,12 @@ function Library:_switchTab(tabData)
 	self.activeTab = tabData
 end
 
-function Library:CreateSection(tab, name, side)
+function Library:CreateSection(parent, name, side)
+	if type(parent) == "table" and parent._tab then
+		side = parent._side
+		parent = parent._tab
+	end
+	local tab = parent
 	side = side or "left"
 	local parentElements = side == "left" and tab.leftElements or tab.rightElements
 
@@ -2367,95 +2478,7 @@ function Library:RefreshAll()
 end
 
 function Library:Notify(text, isWarning)
-	local barColor = typeof(isWarning) == "boolean" and Color3.fromRGB(255, 200, 0) or COLOR_ACCENT
-	local duration = 3
-
-	local displayText = text or ""
-
-	local notifyFrame = Create("CanvasGroup", {
-		BackgroundColor3 = COLOR_BG,
-		Size = UDim2.new(0, 0, 0, 22),
-		BorderColor3 = COLOR_BLACK,
-		Name = "Notification",
-		GroupTransparency = 1,
-		ZIndex = 999,
-		Parent = self.notifyHolder,
-	})
-
-	local notifyText = Create("TextLabel", {
-		TextStrokeTransparency = 0, BorderSizePixel = 0, TextSize = 12,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		BackgroundColor3 = COLOR_WHITE, FontFace = FONT,
-		TextColor3 = isWarning and barColor or COLOR_TEXT,
-		BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.X,
-		BorderColor3 = COLOR_BLACK,
-		Text = displayText,
-		Position = UDim2.new(0, 6, 0, 0),
-		Parent = notifyFrame,
-	})
-	applyStroke(notifyText)
-	local textWidth = notifyText.TextBounds.X
-	notifyText.AutomaticSize = Enum.AutomaticSize.None
-
-	local frameWidth = math.clamp(math.ceil(textWidth) + 52, 120, 400)
-	notifyFrame.Size = UDim2.new(0, frameWidth, 0, 22)
-	notifyText.Size = UDim2.new(0, frameWidth - 36, 1, 0)
-
-	local timerLabel = Create("TextLabel", {
-		TextStrokeTransparency = 0, BorderSizePixel = 0, TextSize = 12,
-		TextXAlignment = Enum.TextXAlignment.Right,
-		BackgroundColor3 = COLOR_WHITE, FontFace = FONT,
-		TextColor3 = barColor, BackgroundTransparency = 1,
-		Size = UDim2.new(0, 28, 1, 0), BorderColor3 = COLOR_BLACK,
-		Text = duration .. "s",
-		Position = UDim2.new(1, -32, 0, 0), Parent = notifyFrame,
-	})
-
-	local timerBar = Create("Frame", {
-		BorderSizePixel = 0, BackgroundColor3 = barColor,
-		Size = UDim2.new(1, 0, 0, 2),
-		Position = UDim2.new(0, 0, 1, -2),
-		BorderColor3 = COLOR_BLACK, Parent = notifyFrame,
-	})
-	applyStroke(timerBar)
-
-	notifyFrame.Position = UDim2.new(0, -frameWidth - 20, notifyFrame.Position.Y.Scale, notifyFrame.Position.Y.Offset)
-	tween(notifyFrame, {Position = UDim2.new(0, 4, notifyFrame.Position.Y.Scale, notifyFrame.Position.Y.Offset), GroupTransparency = 0}, TWEEN_INFO_SMOOTH):Play()
-	tween(timerBar, {Size = UDim2.new(0, 0, 0, 2)}, TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)):Play()
-
-	if isWarning then
-		local flashTween = TweenInfo.new(0.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-		for i = 1, 6 do
-			task.delay((i - 1) * 0.5, function()
-				local target = i % 2 == 1 and barColor or Color3.fromRGB(80, 60, 0)
-				tween(timerBar, {BackgroundColor3 = target}, flashTween):Play()
-			end)
-		end
-	else
-		local flashTween = TweenInfo.new(0.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-		for i = 1, 6 do
-			task.delay((i - 1) * 0.5, function()
-				local target = i % 2 == 1 and barColor or Color3.fromRGB(2, 60, 110)
-				tween(timerBar, {BackgroundColor3 = target}, flashTween):Play()
-			end)
-		end
-	end
-
-	for i = duration - 1, 0, -1 do
-		task.delay(duration - i, function()
-			if notifyFrame and notifyFrame.Parent then
-				timerLabel.Text = i .. "s"
-			end
-		end)
-	end
-
-	task.delay(duration, function()
-		local outTween = tween(notifyFrame, {Position = UDim2.new(0, -frameWidth - 20, notifyFrame.Position.Y.Scale, notifyFrame.Position.Y.Offset), GroupTransparency = 1}, TWEEN_INFO_SMOOTH)
-		outTween:Play()
-		outTween.Completed:Connect(function()
-			notifyFrame:Destroy()
-		end)
-	end)
+	table.insert(self._notifyQueue, { text = text, warn = isWarning })
 end
 
 function Library:CreateMultiTab(tab, name)
@@ -2585,6 +2608,9 @@ function Library:CreateMultiTab(tab, name)
 		mtButton.TextColor3 = COLOR_ACCENT
 		mtButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 	end
+
+	mtData.LeftColumn = {_tab = mtData, _side = "left"}
+	mtData.RightColumn = {_tab = mtData, _side = "right"}
 
 	return mtData
 end
