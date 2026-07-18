@@ -1162,7 +1162,8 @@ function Library:CreateSlider(section, config)
 		BackgroundColor3 = COLOR_WHITE, FontFace = FONT,
 		TextColor3 = COLOR_TEXT, BackgroundTransparency = 1,
 		Size = UDim2.new(0, 60, 0, 13), BorderColor3 = COLOR_BLACK,
-		Text = (tostring(default) == minVal and specialMin or tostring(default) == maxVal and specialMax or tostring(default)) .. " / " .. tostring(maxVal), Name = "value",
+		Text = (tostring(default) == minVal and specialMin or tostring(default) == maxVal and specialMax or tostring(default)) .. " / " .. tostring(maxVal),
+		Name = "value",
 		Position = UDim2.new(0.36922, 0, 0.5, 0), Parent = sliderFrame,
 	})
 	applyStroke(valueLabel)
@@ -1176,7 +1177,7 @@ function Library:CreateSlider(section, config)
 		tween(fill, {Size = UDim2.new(frac, 0, 0, 13)}, TWEEN_INFO_FAST):Play()
 		local displayVal = step == 1 and math.floor(val) or val
 		displayVal = string.format("%." .. (step < 1 and 2 or 0) .. "f", displayVal)
-		valueLabel.Text = displayVal .. " / " .. tostring(maxVal)
+		valueLabel.Text = displayVal == minVal and specialMin or displayVal == maxVal and specialMax or displayVal .. " / " .. tostring(maxVal)
 		Library.flags[flag] = val
 		callback(val)
 	end
