@@ -1176,8 +1176,9 @@ function Library:CreateSlider(section, config)
 		val = math.clamp(val, minVal, maxVal)
 		tween(fill, {Size = UDim2.new(frac, 0, 0, 13)}, TWEEN_INFO_FAST):Play()
 		local displayVal = step == 1 and math.floor(val) or val
+		local tingting = displayVal == minVal and specialMin or displayVal == maxVal and specialMax
 		displayVal = string.format("%." .. (step < 1 and 2 or 0) .. "f", displayVal)
-		valueLabel.Text = displayVal == minVal and specialMin or displayVal == maxVal and specialMax or displayVal .. " / " .. tostring(maxVal)
+		valueLabel.Text = tingting or displayVal .. " / " .. tostring(maxVal)
 		Library.flags[flag] = val
 		callback(val)
 	end
